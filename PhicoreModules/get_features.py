@@ -315,9 +315,6 @@ def get_rolling_deltas(genbank_path_all : str, genbank_path_tag : str, genbank_p
     # df_all['TGA_all'] = stops_all['TGA'] 
     # df_all['TAA_all'] = stops_all['TAA'] 
 
-    
-
-
 
     df_all['tag_minus_all_mean_cds'] = df_all['Mean_CDS_tag'] - df_all['Mean_CDS_all']
     df_all['tga_minus_all_mean_cds'] = df_all['Mean_CDS_tga'] - df_all['Mean_CDS_all']
@@ -329,4 +326,181 @@ def get_rolling_deltas(genbank_path_all : str, genbank_path_tag : str, genbank_p
     df_all = df_all.drop(['Mean_CDS', 'Mean_CDS_all', 'Mean_CDS_tag', 'Mean_CDS_tga', 'Mean_CDS_taa', 'Count_CDS_all', 'Count_CDS_tag', 'Count_CDS_tga', 'Count_CDS_taa'], axis=1)
 
     return pd.DataFrame(df_all)
+
+
+
+def get_rolling_stop_codon_usage(genbank_path_all : str, genbank_path_tag : str, genbank_path_tga : str, genbank_path_taa : str, window : int = 2000, step : int = 1) -> pd.DataFrame:
+    """
+    Get distribution of stops
+    :param window: window size
+    :param step: step size
+    :return:
+    """
+
+    for record in parse_genbank(genbank_path_all):
+        stops_all = get_distribution_of_stops(record, window=2000, step=30)
+    for record in parse_genbank(genbank_path_tag):
+        stops_tag = get_distribution_of_stops(record, window=2000, step=30)
+    for record in parse_genbank(genbank_path_tga):
+        stops_tga = get_distribution_of_stops(record, window=2000, step=30)
+    for record in parse_genbank(genbank_path_taa):
+        stops_taa = get_distribution_of_stops(record, window=2000, step=30)
+
+
+    stops_all['Count_Stop_TAG_all'] = stops_all['TAG'] 
+    stops_all['Count_Stop_TGA_all'] = stops_all['TGA'] 
+    stops_all['Count_Stop_TAA_all'] = stops_all['TAA'] 
+
+    stops_all['Count_Stop_TAG_TAGrec'] = stops_tag['TAG'] 
+    stops_all['Count_Stop_TGA_TAGrec'] = stops_tag['TGA'] 
+    stops_all['Count_Stop_TAA_TAGrec'] = stops_tag['TAA'] 
+    
+    stops_all['Count_Stop_TAG_TGArec'] = stops_tga['TAG'] 
+    stops_all['Count_Stop_TGA_TGArec'] = stops_tga['TGA'] 
+    stops_all['Count_Stop_TAA_TGArec'] = stops_tga['TAA'] 
+
+    stops_all['Count_Stop_TAG_TAArec'] = stops_taa['TAG'] 
+    stops_all['Count_Stop_TGA_TAArec'] = stops_taa['TGA'] 
+    stops_all['Count_Stop_TAA_TAArec'] = stops_taa['TAA'] 
+
+
+    stops_all = stops_all.drop(['TAG', 'TGA', 'TAA'], axis=1)
+
+    return pd.DataFrame(stops_all)
+
+
+
+
+
+
+
+
+# def get_all_stops(seqiorec: SeqRecord) -> pd.DataFrame:
+#     """
+#     Get distribution of STOP codons in a sequence
+#     :param seqiorec: SeqRecord object
+#     :param window: window size
+#     :param step: step size
+#     :return:
+#     """
+
+#     locations = []
+#     stops = []
+#     strands = []
+#     lengths = []
+
+#     for record in parse_genbank(seqiorec):
+#         # Loop over the features
+#         for feature in record.features:
+#             if feature.type == "CDS":
+#                 gene_sequence = feature.extract(record.seq)
+#                 stop_codon = gene_sequence[-3:]
+#                 #print("Stop codon is %s" % stop_codon)
+#                 strand = feature.strand 
+#                 if strand == 1: # forward strand
+#                     location = feature.location.end - 3
+#                     length = abs(feature.location.end - feature.location.start)
+#                 else:
+#                     location = feature.location.start +3
+#                 #print("location is %s" % location)
+#                 if stop_codon == "TAA":              
+#                     stops.append('TAA')
+#                 if stop_codon == "TGA":
+#                     stops.append('TGA')
+#                 if stop_codon == "TAG":
+#                     stops.append('TAG')
+#                 locations.append(location)
+#                 strands.append(strand)
+#                 lengths.append(feature.len)
+
+#     stops_df = pd.DataFrame(
+#     {'locations': locations,
+#      'stops': stops, 
+#      'strands': strands
+#     })
+    
+#     return pd.DataFrame(stops_df)
+
+
+
+def get_all_stops(seqiorec: SeqRecord) -> pd.DataFrame:
+    """
+    Get distribution of STOP codons in a sequence
+    :param seqiorec: SeqRecord object
+    :param window: window size
+    :param step: step size
+    :return:
+    """
+
+    locations = []
+    stops = []
+    strands = []
+    lengths = []
+    tag_counts = []
+    tga_counts = []
+    taa_counts = []
+
+    for record in parse_genbank(seqiorec):
+        # Loop over the features
+        for feature in record.features:
+            if feature.type == "CDS":
+                length = abs(feature.location.end - feature.location.start)
+                gene_sequence = feature.extract(record.seq)
+                tag_count = 0
+                tga_count = 0
+                taa_count = 0
+
+                # counts tags
+                for i in range(0, length-2, 3):
+                    if gene_sequence[i:i+3] == 'TAG':
+                        tag_count += 1
+                    if gene_sequence[i:i+3] == 'TGA':
+                        tga_count += 1
+                    if gene_sequence[i:i+3] == 'TAA':
+                        taa_count += 1
+                        
+
+
+                stop_codon = gene_sequence[-3:]
+                #print("Stop codon is %s" % stop_codon)
+                strand = feature.strand 
+                if strand == 1: # forward strand
+                    location = feature.location.end - 3
+                    length = abs(feature.location.end - feature.location.start)
+                else:
+                    location = feature.location.start + 3
+                #print("location is %s" % location)
+                if stop_codon == "TAA":              
+                    stops.append('TAA')
+                elif stop_codon == "TGA":
+                    stops.append('TGA')
+                elif stop_codon == "TAG":
+                    stops.append('TAG')
+                else:
+                    stops.append('NA')
+
+                
+                strands.append(strand)
+                locations.append(location)
+                lengths.append(length)
+                tag_counts.append(tag_count)
+                tga_counts.append(tga_count)
+                taa_counts.append(taa_count)
+
+    print(len(locations))
+    print(len(stops))
+    print(len(strands))
+    print(len(lengths))
+    print(len(tag_counts))
+
+    stops_df = pd.DataFrame(
+    {'locations': locations,
+     'stops': stops, 
+     'length': lengths,
+     'tag_counts': tag_counts,
+     'tga_counts': tga_counts,
+     'taa_counts': taa_counts
+    })
+    
+    return pd.DataFrame(stops_df)
 
